@@ -1,25 +1,31 @@
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use threadpool::{Builder, ThreadPool};
+use rayon::prelude::*;
 
 struct Ptr(*mut [i32]);
 
 unsafe impl Send for Ptr {}
 
 const NUM_ELEMENTS: usize = 100_000_000;
-const NUM_THREADS: usize = 16;
+const NUM_THREADS: usize = 4;
 const NUM_ELS_PER_SLICE: usize = NUM_ELEMENTS / NUM_THREADS;
 const THREAD_STACK_SIZE: usize = 1_000_000;
 
 fn main() {
-    // time
     let start = Instant::now();
     let vec = run_safe();
     println!("Safe run time: {:?}", start.elapsed());
     assert_eq!(vec, vec![1; NUM_ELEMENTS]);
+
     let start = Instant::now();
     let vec = run_unsafe();
     println!("Unsafe run time: {:?}", start.elapsed());
+    assert_eq!(vec, vec![1; NUM_ELEMENTS]);
+
+    let start = Instant::now();
+    let vec = run_rayon();
+    println!("Rayon run time: {:?}", start.elapsed());
     assert_eq!(vec, vec![1; NUM_ELEMENTS]);
 }
 
@@ -92,5 +98,12 @@ fn run_unsafe() -> Vec<i32> {
 
     pool.join();
 
+    vec
+}
+
+fn run_rayon() -> Vec<i32> {
+    let mut vec = vec![0; NUM_ELEMENTS];
+    vec.par_iter_mut().for_each(|x| *x += 1);
+    
     vec
 }
